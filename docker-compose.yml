@@ -1,11 +1,19 @@
 version: "2.4"
 volumes:
-    cmdbuild-db:
-    cmdbuild-tomcat:
+  cmdbuild-db:
+    external: true
+  cmdbuild-tomcat:
+    external: true
+  nginx_conf:
+    external: true
+  letsencrypt_certs:
+    external: true
+  certbot_acme_challenge:
+
 
 services:
     cmdbuild_db1:
-        image: cmdbuild:db-12
+        image: olehkondratov/cmdbuild:db-12
         container_name: cmdbuild_db1
         volumes:
             - cmdbuild-db:/var/lib/postgresql
@@ -19,7 +27,7 @@ services:
         mem_reservation: 300m
 
     cmdbuild_app1:
-        image: ready2use-2.3-3.4.1:latest
+        image: olehkondratov/ready2use-2.3-3.4.1:latest
         container_name: cmdbuild_app1
         links:
            - cmdbuild_db1
@@ -40,3 +48,20 @@ services:
             - JAVA_OPTS=-Xmx4000m -Xms2000m
         mem_limit: 4000m
         mem_reservation: 2000m
+
+    nginx:
+        build: ./nginx
+        image: olehkondratov/nginx:1.23.3
+        env_file:
+          - config.env
+        volumes:
+        - nginx_conf:/etc/nginx/sites
+        - letsencrypt_certs:/etc/letsencrypt
+        - certbot_acme_challenge:/var/www/certbot
+        - ./vhosts:/etc/nginx/vhosts
+        - ./html:/var/www/html
+        ports:
+        - "80:80"
+        - "443:443"
+        restart: always
+
