@@ -1,0 +1,42 @@
+version: "2.4"
+volumes:
+    cmdbuild-db:
+    cmdbuild-tomcat:
+
+services:
+    cmdbuild_db1:
+        image: cmdbuild:db-12
+        container_name: cmdbuild_db1
+        volumes:
+            - cmdbuild-db:/var/lib/postgresql
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASS=postgres
+        restart: always
+        mem_limit: 1000m
+        mem_reservation: 300m
+
+    cmdbuild_app1:
+        image: ready2use-2.3-3.4.1:latest
+        container_name: cmdbuild_app1
+        links:
+           - cmdbuild_db1
+        depends_on:
+           - cmdbuild_db1
+        ports:
+            - 8090:8080
+        restart: always
+        volumes:
+            - cmdbuild-tomcat:/usr/local/tomcat
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASS=postgres
+            - POSTGRES_PORT=5432
+            - POSTGRES_HOST=cmdbuild_db1
+            - POSTGRES_DB=cmdbuild_r2u2
+            - CMDBUILD_DUMP=demo.dump.xz
+            - JAVA_OPTS=-Xmx4000m -Xms2000m
+        mem_limit: 4000m
+        mem_reservation: 2000m
