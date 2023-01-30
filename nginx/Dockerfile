@@ -1,7 +1,5 @@
 FROM nginx:1.23.3-alpine
-
 RUN apk add --no-cache openssl
-
 COPY default.conf /etc/nginx/conf.d/
 COPY gzip.conf options-ssl-nginx.conf hsts.conf /etc/nginx/includes/
 COPY site.conf.tpl /customization/

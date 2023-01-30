@@ -1,4 +1,4 @@
-version: "2.4"
+version: "3.9"
 volumes:
   cmdbuild-db:
     external: true
@@ -12,27 +12,31 @@ volumes:
 
 
 services:
-    cmdbuild_db1:
+    cmdbuild_db:
+        build: ./postgres
         image: olehkondratov/cmdbuild:db-12
-        container_name: cmdbuild_db1
+        container_name: cmdbuild_db
         volumes:
             - cmdbuild-db:/var/lib/postgresql
         ports:
             - 5432:5432
         environment:
-            - POSTGRES_USER=postgres
-            - POSTGRES_PASS=postgres
+            PGDATA: "/var/lib/postgresql/data/pgdata"
+            POSTGRES_DB: test_data
+            POSTGRES_USER: postgres
+            POSTGRES_PASS: postgres
         restart: always
         mem_limit: 1000m
         mem_reservation: 300m
 
-    cmdbuild_app1:
+    cmdbuild_app:
+        build: .
         image: olehkondratov/ready2use-2.3-3.4.1:latest
-        container_name: cmdbuild_app1
+        container_name: cmdbuild_app
         links:
-           - cmdbuild_db1
+           - cmdbuild_db
         depends_on:
-           - cmdbuild_db1
+           - cmdbuild_db
         ports:
             - 8090:8080
         restart: always
@@ -42,16 +46,18 @@ services:
             - POSTGRES_USER=postgres
             - POSTGRES_PASS=postgres
             - POSTGRES_PORT=5432
-            - POSTGRES_HOST=cmdbuild_db1
+            - POSTGRES_HOST=cmdbuild_db
             - POSTGRES_DB=cmdbuild_r2u2
             - CMDBUILD_DUMP=demo.dump.xz
+           #- CMDBUILD_DUMP=archiwum.dump.xz
             - JAVA_OPTS=-Xmx4000m -Xms2000m
         mem_limit: 4000m
         mem_reservation: 2000m
 
-    nginx:
+    cmdbuild_nginx:
         build: ./nginx
         image: olehkondratov/nginx:1.23.3
+        container_name: cmdbuild_nginx
         env_file:
           - config.env
         volumes:
@@ -65,3 +71,23 @@ services:
         - "443:443"
         restart: always
 
+    cmdbuild_certbot:
+      build: ./certbot
+      image: olehkondratov/certbot:v2.2.0
+      container_name: cmdbuild_certbot
+      env_file:
+        - ./config.env
+      volumes:
+        - letsencrypt_certs:/etc/letsencrypt
+        - certbot_acme_challenge:/var/www/certbot
+  
+    cmdbuild_cron:
+      build: ./cron
+      image: olehkondratov/cron:3.17.1
+      container_name: cmdbuild_cron
+      environment:
+        COMPOSE_PROJECT_NAME: "${COMPOSE_PROJECT_NAME}"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - ./:/workdir:ro
+      restart: unless-stopped
